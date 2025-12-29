@@ -4,23 +4,13 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 def generate_team_image_table(
+    candidates=None,
     output_image="team_table.png",
     avatar_paths=None,
     avatar_size=64,
-    font_path=None  # 可选：中文ttf字体路径，如 "simhei.ttf"
-):
-    # ========== 配置 ==========
-    candidates = {
-        "大丽花":       {"spd_pct": 0.30, "advance": 0.00, "base": "dahlia", "cost": 1},
-        "6魂大丽花":    {"spd_pct": 0.30, "advance": 0.20, "base": "dahlia", "cost": 7},
-        "忘归人":       {"spd_pct": 0.00, "advance": 0.00, "base": "wang", "cost": 1},
-        "2魂忘归人":    {"spd_pct": 0.00, "advance": 0.24, "base": "wang", "cost": 3},
-        "阮·梅":        {"spd_pct": 0.10, "advance": 0.00, "base": "ruan", "cost": 0},
-        "开拓者(555)":  {"spd_pct": 0.00, "advance": 0.24, "base": "kaituozhe", "cost": 0},
-        "开拓者":  {"spd_pct": 0.00, "advance": 0.00, "base": "kaituozhe", "cost": 0},
-        "加拉赫/灵砂":  {"spd_pct": 0.00, "advance": 0.00, "base": "heel", "cost": 0},
-    }
-    
+    font_path=None,  # 可选：中文ttf字体路径，如 "simhei.ttf"
+    is_save=False
+):    
     firefly_base_spd = 104.0
     firefly_ult_flat = 60.0
     summon_speed = 70.0
@@ -136,7 +126,7 @@ def generate_team_image_table(
         # --- 绘制文本数据 ---
         text_lines = [
             f"金数: {r['cost']}",
-            f"目标: {r['moves']}动"f"\t面板: {r['speed']:.1f}",
+            f"目标: {r['moves']}动 面板: {r['speed']:.1f}",
             f"拉条: {r['advance_pct']:.0f}%",
             f"速加: {r['spd_pct']:.0f}%",
             # f"面板: {r['speed']:.1f}",
@@ -147,8 +137,10 @@ def generate_team_image_table(
         y = y - 18 * len(text_lines) + row_height  # 回到下一行基线
 
     # 保存
-    img.save(output_image)
+    if is_save:
+        img.save(output_image)
     print(f"长图表格已生成: {output_image}")
+    return img
 
 # ========== 使用示例 ==========
 if __name__ == "__main__":
@@ -164,9 +156,23 @@ if __name__ == "__main__":
         "加拉赫/灵砂": "avatars/lingsha.jpg",
     }
 
+    # ========== 配置 ==========
+    candidates = {
+        "大丽花":       {"spd_pct": 0.30, "advance": 0.00, "base": "dahlia", "cost": 1},
+        "6魂大丽花":    {"spd_pct": 0.30, "advance": 0.20, "base": "dahlia", "cost": 7},
+        "忘归人":       {"spd_pct": 0.00, "advance": 0.00, "base": "wang", "cost": 1},
+        "2魂忘归人":    {"spd_pct": 0.00, "advance": 0.24, "base": "wang", "cost": 3},
+        "阮·梅":        {"spd_pct": 0.10, "advance": 0.00, "base": "ruan", "cost": 0},
+        "开拓者(555)":  {"spd_pct": 0.00, "advance": 0.24, "base": "kaituozhe", "cost": 0},
+        "开拓者":  {"spd_pct": 0.00, "advance": 0.00, "base": "kaituozhe", "cost": 0},
+        "加拉赫/灵砂":  {"spd_pct": 0.00, "advance": 0.00, "base": "heel", "cost": 0},
+    }
+
     generate_team_image_table(
+        candidates=candidates,
         output_image="team_combinations_with_avatars.png",
         avatar_paths=avatar_map,
         avatar_size=64,
-        font_path="SimSun/SimSun.ttf"  # 可选，换成你系统的中文字体
+        font_path="SimSun/SimSun.ttf",  # 可选，换成你系统的中文字体
+        is_save=True
     )
