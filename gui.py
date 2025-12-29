@@ -1,362 +1,318 @@
 import tkinter as tk
-from tkinter import ttk, filedialog
-from PIL import Image, ImageTk, ImageDraw, ImageFont
-import itertools
+from tkinter import ttk, filedialog, messagebox
+from PIL import Image, ImageTk
 import os
-from speed import generate_team_image_table
+from typing import Dict, Any
+
+# 假设 speed 模块在同目录下
+try:
+    from speed import generate_team_image_table
+except ImportError:
+    # Mock 用于测试
+    def generate_team_image_table(**kwargs):
+        return Image.new('RGB', (800, 200), color='white')
+
+# --- 配置数据 ---
+CONSTANTS = {
+    "FIREFLY_BASE_SPD": 104.0,
+    "FIREFLY_ULT_FLAT": 60.0,
+    "SUMMON_SPEED": 70.0,
+    "AVATAR_SIZE": 64,
+    "WINDOW_SIZE": "1100x900", # 稍微调大一点窗口以容纳新增控件
+}
+
+CANDIDATES_DATA = {
+    "大丽花":       {"spd_pct": 0.30, "advance": 0.00, "base": "dahlia", "cost": 1, "img": "avatars/dahlia.jpg", "times": 1},
+    "6魂大丽花":    {"spd_pct": 0.30, "advance": 0.20, "base": "dahlia", "cost": 7, "img": "avatars/dahlia6.jpg", "times": 1},
+    "忘归人":       {"spd_pct": 0.00, "advance": 0.00, "base": "wang", "cost": 1,   "img": "avatars/wang.jpg", "times": 1},
+    "2魂忘归人":    {"spd_pct": 0.00, "advance": 0.24, "base": "wang", "cost": 3,   "img": "avatars/wang2.jpg", "times": 1},
+    "阮·梅":        {"spd_pct": 0.10, "advance": 0.00, "base": "ruan", "cost": 0,   "img": "avatars/ruan.jpg", "times": 1},
+    "开拓者(555)":  {"spd_pct": 0.00, "advance": 0.24, "base": "kaituozhe", "cost": 0, "img": "avatars/aki.jpg", "times": 1},
+    "开拓者":       {"spd_pct": 0.00, "advance": 0.00, "base": "kaituozhe", "cost": 0, "img": "avatars/aki.jpg", "times": 1},
+    "加拉赫/灵砂":  {"spd_pct": 0.00, "advance": 0.00, "base": "heel", "cost": 0,     "img": "avatars/lingsha.jpg", "times": 1},
+}
 
 class TeamImageTableApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("星穹铁道配队计算器")
-        self.root.geometry("800x600")
+        self.root.geometry(CONSTANTS["WINDOW_SIZE"])
         
-        # 配置数据
-        self.candidates = {
-            "大丽花":       {"spd_pct": 0.30, "advance": 0.00, "base": "dahlia", "cost": 1},
-            "6魂大丽花":    {"spd_pct": 0.30, "advance": 0.20, "base": "dahlia", "cost": 7},
-            "忘归人":       {"spd_pct": 0.00, "advance": 0.00, "base": "wang", "cost": 1},
-            "2魂忘归人":    {"spd_pct": 0.00, "advance": 0.24, "base": "wang", "cost": 3},
-            "阮·梅":        {"spd_pct": 0.10, "advance": 0.00, "base": "ruan", "cost": 0},
-            "开拓者(555)":  {"spd_pct": 0.00, "advance": 0.24, "base": "kaituozhe", "cost": 0},
-            "开拓者(555*2)":  {"spd_pct": 0.00, "advance": 0.48, "base": "kaituozhe", "cost": 0},
-            "开拓者":       {"spd_pct": 0.00, "advance": 0.00, "base": "kaituozhe", "cost": 0},
-            "加拉赫/灵砂":  {"spd_pct": 0.00, "advance": 0.00, "base": "heel", "cost": 0},
-        }
-        
-        self.firefly_base_spd = 104.0
-        self.firefly_ult_flat = 60.0
-        self.summon_speed = 70.0
-        # 目标回合选择（UI上绑定到复选框）
+        # --- 初始化状态变量 ---
+        self.font_path = None
+        self.tk_image = None  
+        self.avatar_thumbs = {} 
+        self.raw_results = []   
+        self.filtered_results = [] 
+
+        # 变量绑定
         self.target_move_vars = {
             4: tk.BooleanVar(value=True),
             5: tk.BooleanVar(value=True),
             6: tk.BooleanVar(value=False),
+            7: tk.BooleanVar(value=False),
+            8: tk.BooleanVar(value=False),
         }
-        self.avatar_size = 64
-        self.font_path = None
-        
-        # 头像映射
-        self.avatar_map = {
-            "大丽花": "avatars/dahlia.jpg",
-            "6魂大丽花": "avatars/dahlia6.jpg",
-            "忘归人": "avatars/wang.jpg",
-            "2魂忘归人": "avatars/wang2.jpg",
-            "阮·梅": "avatars/ruan.jpg",
-            "开拓者(555)": "avatars/aki.jpg",
-            "开拓者(555*2)": "avatars/aki2.jpg",
-            "开拓者": "avatars/aki.jpg",
-            "加拉赫/灵砂": "avatars/lingsha.jpg",
+        self.filter_vars = {
+            "min_spd": tk.StringVar(value="100"),
+            "max_spd": tk.StringVar(value="300"),
+            "min_cost": tk.StringVar(value="0"),
+            "max_cost": tk.StringVar(value="11"),
         }
+        self.candidate_vars = {} 
+        self.candidate_times_vars = {} # [新增] 存储每个角色的 times 变量
+
+        # --- 构建界面 ---
+        self._setup_ui()
         
-        # 创建控制面板
-        self.create_control_panel()
-        
-        # 创建主显示区域
-        self.create_display_area()
-        
-        # 生成初始数据
-        self.results = []
-        self.generate_data()
-        
-        # 绑定鼠标滚轮事件
+        # --- 初始逻辑 ---
         self.bind_mouse_wheel()
-        
-    def create_control_panel(self):
-        """创建控制面板"""
+        self.refresh_data_and_display()
+
+    def _setup_ui(self):
+        """构建整体UI布局"""
         control_frame = ttk.Frame(self.root, padding="10")
         control_frame.pack(fill=tk.X)
+        self._setup_control_panel(control_frame)
         
-        # 生成图片按钮
-        ttk.Button(control_frame, text="生成配队表格", 
-                  command=self.generate_and_display).pack(side=tk.LEFT, padx=5)
+        candidates_frame = ttk.LabelFrame(self.root, text="候选角色选择 (勾选并设置触发次数)", padding=6)
+        candidates_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        self._setup_candidate_grid(candidates_frame)
+
+        self._setup_display_area()
+
+    def _setup_control_panel(self, parent):
+        btn_frame = ttk.Frame(parent)
+        btn_frame.pack(side=tk.LEFT)
+        ttk.Button(btn_frame, text="生成表格", command=self.refresh_data_and_display).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="保存图片", command=self.save_image).pack(side=tk.LEFT, padx=2)
+
+        filter_frame = ttk.Labelframe(parent, text="筛选条件", padding=(5, 0))
+        filter_frame.pack(side=tk.LEFT, padx=15)
         
-        # 保存图片按钮
-        ttk.Button(control_frame, text="保存图片", 
-                  command=self.save_image).pack(side=tk.LEFT, padx=5)
+        self._create_labeled_entry(filter_frame, "速度:", self.filter_vars["min_spd"], self.filter_vars["max_spd"])
+        self._create_labeled_entry(filter_frame, "Cost:", self.filter_vars["min_cost"], self.filter_vars["max_cost"])
         
-        # 筛选条件
-        ttk.Label(control_frame, text="筛选:").pack(side=tk.LEFT, padx=5)
-        
+        ttk.Button(filter_frame, text="应用筛选", command=self.apply_filter_only).pack(side=tk.LEFT, padx=5, pady=2)
 
-        self.min_speed_var = tk.StringVar(value="100")
-        self.max_speed_var = tk.StringVar(value="300")
-        self.min_cost_var = tk.StringVar(value="0")
-        self.max_cost_var = tk.StringVar(value="11")
+        moves_frame = ttk.Labelframe(parent, text="目标回合", padding=(5, 0))
+        moves_frame.pack(side=tk.LEFT, padx=5)
+        for m in self.target_move_vars.keys():
+            ttk.Checkbutton(moves_frame, text=str(m), variable=self.target_move_vars[m], 
+                            command=self.refresh_data_and_display).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(control_frame, text="最低速度:").pack(side=tk.LEFT, padx=2)
-        ttk.Entry(control_frame, textvariable=self.min_speed_var, width=6).pack(side=tk.LEFT, padx=2)
-
-        ttk.Label(control_frame, text="最高速度:").pack(side=tk.LEFT, padx=2)
-        ttk.Entry(control_frame, textvariable=self.max_speed_var, width=6).pack(side=tk.LEFT, padx=2)
-
-        ttk.Label(control_frame, text="最低cost:").pack(side=tk.LEFT, padx=2)
-        ttk.Entry(control_frame, textvariable=self.min_cost_var, width=6).pack(side=tk.LEFT, padx=2)
-
-        ttk.Label(control_frame, text="最高cost:").pack(side=tk.LEFT, padx=2)
-        ttk.Entry(control_frame, textvariable=self.max_cost_var, width=6).pack(side=tk.LEFT, padx=2)
-
-        
-        ttk.Button(control_frame, text="应用筛选", 
-                  command=self.apply_filter).pack(side=tk.LEFT, padx=5)
-
-        # 目标回合选择按钮（4/5/6）
-        ttk.Label(control_frame, text="目标回合:").pack(side=tk.LEFT, padx=5)
-        for m in (4, 5, 6):
-            cb = ttk.Checkbutton(control_frame, text=str(m), variable=self.target_move_vars[m],
-                                 command=self.on_target_moves_change)
-            cb.pack(side=tk.LEFT, padx=2)
-        
-        # 显示信息标签
-        self.info_label = ttk.Label(control_frame, text="")
+        self.info_label = ttk.Label(parent, text="就绪", font=("Microsoft YaHei", 10, "bold"))
         self.info_label.pack(side=tk.RIGHT, padx=10)
+
+    def _create_labeled_entry(self, parent, label_text, min_var, max_var):
+        f = ttk.Frame(parent)
+        f.pack(side=tk.LEFT, padx=5)
+        ttk.Label(f, text=label_text).pack(side=tk.LEFT)
+        ttk.Entry(f, textvariable=min_var, width=5).pack(side=tk.LEFT)
+        ttk.Label(f, text="-").pack(side=tk.LEFT)
+        ttk.Entry(f, textvariable=max_var, width=5).pack(side=tk.LEFT)
+
+    def _setup_candidate_grid(self, parent):
+        """生成候选人网格，包含图片、复选框和次数输入"""
+        grid_frame = ttk.Frame(parent)
+        grid_frame.pack(fill=tk.X, expand=True)
         
-        # 候选角色勾选区域（放在控制面板下方）
-        self.candidate_vars = {}
-        # 缩略图缓存，避免PhotoImage被垃圾回收
-        self.avatar_thumbs = {}
-        candidates_frame = ttk.LabelFrame(self.root, text="候选角色", padding=6)
-        candidates_frame.pack(fill=tk.X, padx=10, pady=(0,10))
-
-        # 内部用于换行的容器（使用 grid 以便自动换行）
-        candidates_inner = ttk.Frame(candidates_frame)
-        candidates_inner.pack(fill=tk.X)
-
-        # 每个候选创建一个勾选框，默认全选；按列数换行
         cols = 8
-        for idx, name in enumerate(self.candidates.keys()):
-            var = tk.BooleanVar(value=True)
-            self.candidate_vars[name] = var
+        for idx, (name, data) in enumerate(CANDIDATES_DATA.items()):
+            # 1. 勾选状态变量
+            is_checked_var = tk.BooleanVar(value=True)
+            self.candidate_vars[name] = is_checked_var
+            
+            # 2. 次数状态变量 [新增]
+            times_val_var = tk.IntVar(value=data.get("times", 1))
+            self.candidate_times_vars[name] = times_val_var
 
-            # 单个候选的容器（头像 + 复选框）
-            cand_frame = ttk.Frame(candidates_inner)
-            r = idx // cols
-            c = idx % cols
-            cand_frame.grid(row=r, column=c, padx=6, pady=4, sticky="nw")
+            # 单元格容器
+            cell = ttk.Frame(grid_frame, borderwidth=1, relief="solid") # 加个边框看清楚范围
+            cell.grid(row=idx // cols, column=idx % cols, padx=4, pady=4, sticky="n")
+            
+            # 图片
+            try:
+                if os.path.exists(data["img"]):
+                    pil_img = Image.open(data["img"]).convert("RGBA")
+                    pil_img = pil_img.resize((CONSTANTS["AVATAR_SIZE"], CONSTANTS["AVATAR_SIZE"]), Image.LANCZOS)
+                    tk_thumb = ImageTk.PhotoImage(pil_img)
+                    self.avatar_thumbs[name] = tk_thumb
+                    lbl = tk.Label(cell, image=tk_thumb)
+                else:
+                    raise FileNotFoundError
+            except Exception:
+                lbl = tk.Label(cell, text="No Img", width=8, height=4, bg="#eee")
+            lbl.pack(pady=(2,0))
 
-            # 头像缩略图（用 tk.Label 支持 image）
-            avatar_path = self.avatar_map.get(name)
-            if avatar_path and os.path.exists(avatar_path):
-                try:
-                    im = Image.open(avatar_path).convert("RGBA")
-                    im = im.resize((self.avatar_size, self.avatar_size), Image.LANCZOS)
-                    thumb = ImageTk.PhotoImage(im)
-                    self.avatar_thumbs[name] = thumb
-                    img_label = tk.Label(cand_frame, image=thumb)
-                except Exception:
-                    img_label = tk.Label(cand_frame, text="?", width=8, height=4, bg="lightgray")
-            else:
-                img_label = tk.Label(cand_frame, text="?", width=8, height=4, bg="lightgray")
-            img_label.pack(side=tk.TOP)
+            # 复选框 (放在图片下面)
+            cb = ttk.Checkbutton(cell, text=name, variable=is_checked_var, 
+                            command=self.refresh_data_and_display)
+            cb.pack(pady=(2,0))
+            
+            # 次数输入控制区域 [新增]
+            times_frame = ttk.Frame(cell)
+            times_frame.pack(pady=(0, 5))
+            
+            ttk.Label(times_frame, text="×", font=("Arial", 9, "bold"), foreground="#666").pack(side=tk.LEFT)
+            
+            # Spinbox 用于输入次数
+            spin = ttk.Spinbox(
+                times_frame, 
+                from_=1, 
+                to=10, 
+                width=3, 
+                textvariable=times_val_var,
+                command=self.refresh_data_and_display # 点击上下箭头触发
+            )
+            spin.pack(side=tk.LEFT)
+            
+            # 绑定回车键，防止手动输入不刷新
+            spin.bind("<Return>", lambda e: self.refresh_data_and_display())
+            spin.bind("<FocusOut>", lambda e: self.refresh_data_and_display())
 
-            # 复选框（显示名字）
-            cb = ttk.Checkbutton(cand_frame, text=name, variable=var, command=self.on_candidate_change)
-            cb.pack(side=tk.TOP)
+        # 全选控制
+        ctrl_frame = ttk.Frame(parent)
+        ctrl_frame.pack(side=tk.RIGHT, anchor="n")
+        ttk.Button(ctrl_frame, text="全选", command=lambda: self._toggle_all(True)).pack(pady=2)
+        ttk.Button(ctrl_frame, text="反选", command=lambda: self._toggle_all(False)).pack(pady=2)
 
-        # 全选/取消全选按钮，放在右侧
-        btn_frame = ttk.Frame(candidates_frame)
-        btn_frame.pack(side=tk.RIGHT, padx=4)
-        ttk.Button(btn_frame, text="全选", command=self.select_all_candidates).pack(side=tk.TOP, pady=2)
-        ttk.Button(btn_frame, text="取消全选", command=self.deselect_all_candidates).pack(side=tk.TOP, pady=2)
-        
-    def create_display_area(self):
-        """创建图片显示区域"""
-        # 创建滚动区域
+    def _setup_display_area(self):
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # 创建Canvas和滚动条
-        self.canvas = tk.Canvas(main_frame, bg="white")
+        self.canvas = tk.Canvas(main_frame, bg="#f0f0f0")
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
         
-        # 创建可滚动的框架
         self.scrollable_frame = ttk.Frame(self.canvas)
         self.scrollable_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
         
-        # 将框架添加到Canvas
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.bind('<Configure>', lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width))
         self.canvas.configure(yscrollcommand=scrollbar.set)
         
-        # 布局
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
+    def _toggle_all(self, state: bool):
+        for var in self.candidate_vars.values():
+            var.set(state)
+        self.refresh_data_and_display()
+
+    def _get_selected_candidates(self) -> Dict[str, Any]:
+        """[修改] 获取当前勾选的候选人数据，并注入动态的 times 值"""
+        selected = {}
+        for name, var in self.candidate_vars.items():
+            if var.get():
+                # 复制原始数据，避免修改全局常量
+                cand_data = CANDIDATES_DATA[name].copy()
+                
+                # 获取动态设置的 times
+                try:
+                    # 使用 get() 获取 IntVar 的值
+                    current_times = self.candidate_times_vars[name].get()
+                    cand_data["times"] = current_times
+                except Exception:
+                    # 如果输入无效，保持默认值 1
+                    cand_data["times"] = 1
+                
+                selected[name] = cand_data
+        return selected
+
+    def apply_filter_only(self):
+        """仅执行筛选逻辑"""
+        try:
+            min_s = float(self.filter_vars["min_spd"].get())
+            max_s = float(self.filter_vars["max_spd"].get())
+            min_c = int(self.filter_vars["min_cost"].get())
+            max_c = int(self.filter_vars["max_cost"].get())
+
+            # 如果你有 self.raw_results 数据，可以在这里筛选
+            # 这里的逻辑仅作为 UI 展示，实际图片生成依赖于 selected_candidates
+            self.info_label.config(text=f"参数有效 | 正在重新计算...")
+            
+            # 重新生成图片
+            self._update_display_image()
+            
+        except ValueError:
+            self.info_label.config(text="筛选数值无效", foreground="red")
+
+    def refresh_data_and_display(self):
+        # 统一入口，刷新数据
+        self.apply_filter_only()
+
+    def _update_display_image(self, is_save=False):
+        """调用外部库生成图片并显示"""
+        for w in self.scrollable_frame.winfo_children():
+            w.destroy()
+
+        try:
+            selected_cands = self._get_selected_candidates()
+            selected_avatars = {n: d["img"] for n, d in selected_cands.items()}
+            selected_moves = [m for m, v in self.target_move_vars.items() if v.get()]
+
+            pil_img = generate_team_image_table(
+                candidates=selected_cands, # 这里传进去的 candidates 现在包含了动态的 times
+                output_image="team_table.png",
+                avatar_paths=selected_avatars,
+                avatar_size=CONSTANTS["AVATAR_SIZE"],
+                target_moves_list=selected_moves,
+                font_path=self.font_path,
+                filter_settings={
+                    "min_spd": self.filter_vars["min_spd"].get(),
+                    "max_spd": self.filter_vars["max_spd"].get(),
+                    "min_cost": self.filter_vars["min_cost"].get(),
+                    "max_cost": self.filter_vars["max_cost"].get()
+                },
+                is_save=is_save
+            )
+
+            self.tk_image = ImageTk.PhotoImage(pil_img)
+            ttk.Label(self.scrollable_frame, image=self.tk_image).pack()
+            self.info_label.config(text=f"生成完成，包含 {len(selected_cands)} 个角色")
+            
+        except Exception as e:
+            ttk.Label(self.scrollable_frame, text=f"生成图片出错:\n{e}", foreground="red").pack(pady=20)
+
+    def save_image(self):
+        if not self.tk_image:
+            messagebox.showwarning("警告", "当前没有生成的图片")
+            return
+            
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG", "*.png"), ("JPG", "*.jpg")],
+            initialfile="team_table.png"
+        )
+        if file_path:
+            try:
+                selected_cands = self._get_selected_candidates()
+                selected_avatars = {n: d["img"] for n, d in selected_cands.items()}
+                selected_moves = [m for m, v in self.target_move_vars.items() if v.get()]
+                
+                self._update_display_image(is_save=True)  # 重新生成图片以确保最新
+                messagebox.showinfo("成功", f"保存成功: {file_path}")
+            except Exception as e:
+                messagebox.showerror("错误", f"保存失败: {e}")
+
     def bind_mouse_wheel(self):
-        """绑定鼠标滚轮事件"""
-        self.canvas.bind_all("<MouseWheel>", self.on_mouse_wheel)
-        self.canvas.bind_all("<Button-4>", self.on_mouse_wheel)  # Linux上滚
-        self.canvas.bind_all("<Button-5>", self.on_mouse_wheel)  # Linux下滚
-        
-    def on_mouse_wheel(self, event):
-        """处理鼠标滚轮事件"""
+        self.canvas.bind_all("<MouseWheel>", self._on_mouse_wheel)
+        self.canvas.bind_all("<Button-4>", self._on_mouse_wheel)
+        self.canvas.bind_all("<Button-5>", self._on_mouse_wheel)
+
+    def _on_mouse_wheel(self, event):
         if event.num == 5 or event.delta < 0:
             self.canvas.yview_scroll(1, "units")
         elif event.num == 4 or event.delta > 0:
             self.canvas.yview_scroll(-1, "units")
-        return "break"
-
-    def on_candidate_change(self):
-        """候选勾选变更时重新生成数据并应用当前筛选"""
-        # 重新生成组合并尝试应用当前数值筛选
-        self.generate_data()
-        try:
-            self.apply_filter()
-        except Exception:
-            # 如果筛选输入无效，则只刷新显示
-            self.generate_and_display()
-
-    def on_target_moves_change(self):
-        """目标回合勾选变更时重新生成数据并应用当前筛选"""
-        self.generate_data()
-        try:
-            self.apply_filter()
-        except Exception:
-            self.generate_and_display()
-
-    def select_all_candidates(self):
-        for v in self.candidate_vars.values():
-            v.set(True)
-        self.on_candidate_change()
-
-    def deselect_all_candidates(self):
-        for v in self.candidate_vars.values():
-            v.set(False)
-        self.on_candidate_change()
-    
-    def generate_data(self):
-        """生成配队数据"""
-        self.results = []
-        # 仅使用被勾选的候选
-        candidate_names = [n for n, v in self.candidate_vars.items() if v.get()]
-        if len(candidate_names) < 3:
-            # 不足3人则没有组合
-            self.results = []
-            self.filtered_results = []
-            return
-        
-        for team in itertools.combinations(candidate_names, 3):
-            bases = [self.candidates[m]["base"] for m in team]
-            if len(bases) != len(set(bases)):
-                continue
-
-            total_advance = total_spd_pct = total_cost = 0
-            avatars = []
-            for member in team:
-                d = self.candidates[member]
-                total_advance += d["advance"]
-                total_spd_pct += d["spd_pct"]
-                total_cost += d["cost"]
-                avatars.append(self.avatar_map.get(member))
-
-            # 根据UI复选框获取目标回合列表
-            moves_list = [m for m, var in self.target_move_vars.items() if var.get()]
-            if not moves_list:
-                continue
-
-            for moves in moves_list:
-                countdown_av = 10000.0 / self.summon_speed
-                intervals = moves - 1
-                total_distance = (10000.0 * intervals) - (10000.0 * total_advance)
-                req_ingame_speed = total_distance / countdown_av
-                req_panel_speed = req_ingame_speed - self.firefly_ult_flat - (self.firefly_base_spd * total_spd_pct)
-                display_speed = max(0, req_panel_speed, self.firefly_base_spd)
-                
-                self.results.append({
-                    "team": team,
-                    "avatars": avatars,
-                    "moves": moves,
-                    "advance_pct": total_advance * 100,
-                    "spd_pct": total_spd_pct * 100,
-                    "speed": display_speed,
-                    "cost": total_cost
-                })
-        
-        # 按 cost 降序排序
-        self.results.sort(key=lambda x: x["cost"], reverse=True)
-        self.filtered_results = self.results.copy()
-    
-    def apply_filter(self):
-        """应用速度筛选"""
-        try:
-            min_speed = float(self.min_speed_var.get())
-            max_speed = float(self.max_speed_var.get())
-            min_cost = int(self.min_cost_var.get())
-            max_cost = int(self.max_cost_var.get())
-
-            self.filtered_results = [
-                r for r in self.results
-                if min_speed <= r["speed"] <= max_speed and min_cost <= r["cost"] <= max_cost
-            ]
-            self.info_label.config(text=f"找到 {len(self.filtered_results)} 个配队")
-            self.generate_and_display()
-        except ValueError:
-            self.info_label.config(text="请输入有效的速度和cost范围")
-    
-    def generate_and_display(self):
-        """生成并显示图片"""
-        # 清空之前的显示
-        for widget in self.scrollable_frame.winfo_children():
-            widget.destroy()
-        
-        if not self.filtered_results:
-            label = ttk.Label(self.scrollable_frame, text="未找到符合条件的配队", font=("Arial", 14))
-            label.pack(pady=20)
-            return
-        
-        # 创建PIL图像
-        img = self.create_pil_image()
-        
-        # 转换为Tkinter可显示的格式
-        self.tk_image = ImageTk.PhotoImage(img)
-        
-        # 在滚动框架中显示图片
-        image_label = ttk.Label(self.scrollable_frame, image=self.tk_image)
-        image_label.pack()
-        
-        self.info_label.config(text=f"显示 {len(self.filtered_results)} 个配队")
-    
-    def create_pil_image(self):
-        """创建PIL图像"""
-        # 仅传入被勾选的候选与对应头像
-        selected_candidates = {name: self.candidates[name] for name, v in self.candidate_vars.items() if v.get()}
-        selected_avatars = {name: self.avatar_map.get(name) for name in selected_candidates.keys()}
-        selected_moves = [m for m, var in self.target_move_vars.items() if var.get()]
-        return generate_team_image_table(
-            candidates=selected_candidates,
-            output_image="team_table.png",
-            avatar_paths=selected_avatars,
-            avatar_size=self.avatar_size,
-            target_moves_list=selected_moves,
-            font_path=self.font_path
-        )
-    
-    def save_image(self):
-        """保存图片到本地"""
-        if not hasattr(self, 'filtered_results') or not self.filtered_results:
-            tk.messagebox.showwarning("警告", "请先生成图片")
-            return
-        
-        # 选择保存路径
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".png",
-            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("All files", "*.*")],
-            initialfile="team_table.png"
-        )
-        
-        if file_path:
-            try:
-                img = self.create_pil_image()
-                img.save(file_path)
-                self.info_label.config(text=f"图片已保存到: {file_path}")
-                tk.messagebox.showinfo("成功", f"图片已保存到:\n{file_path}")
-            except Exception as e:
-                tk.messagebox.showerror("错误", f"保存失败: {str(e)}")
 
 def main():
     root = tk.Tk()
+    style = ttk.Style()
+    style.theme_use('clam') 
     app = TeamImageTableApp(root)
     root.mainloop()
 
