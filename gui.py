@@ -40,6 +40,7 @@ class TeamImageTableApp:
         
         # --- 初始化状态变量 ---
         self.font_path = None
+        self.file_path = "team_table.png"
         self.tk_image = None  
         self.avatar_thumbs = {} 
         self.raw_results = []   
@@ -256,7 +257,7 @@ class TeamImageTableApp:
 
             pil_img = generate_team_image_table(
                 candidates=selected_cands, # 这里传进去的 candidates 现在包含了动态的 times
-                output_image="team_table.png",
+                output_image=self.file_path,
                 avatar_paths=selected_avatars,
                 avatar_size=CONSTANTS["AVATAR_SIZE"],
                 target_moves_list=selected_moves,
@@ -287,6 +288,7 @@ class TeamImageTableApp:
             filetypes=[("PNG", "*.png"), ("JPG", "*.jpg")],
             initialfile="team_table.png"
         )
+        self.file_path = file_path
         if file_path:
             try:
                 selected_cands = self._get_selected_candidates()
