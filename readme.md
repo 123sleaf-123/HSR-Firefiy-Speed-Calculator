@@ -4,8 +4,8 @@
 
 ## 主界面
 
-![alt text](image\QQ_1767031995063.png)
+![alt text](image/QQ_1767031995063.png)
 
 ## 说明
 
-![alt text](image\image.png)
+![alt text](image/image.png)
