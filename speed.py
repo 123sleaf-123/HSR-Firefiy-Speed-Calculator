@@ -8,13 +8,13 @@ def generate_team_image_table(
     output_image="team_table.png",
     avatar_paths=None,
     avatar_size=64,
+    target_moves_list=[4, 5],
     font_path=None,  # 可选：中文ttf字体路径，如 "simhei.ttf"
     is_save=False
 ):    
     firefly_base_spd = 104.0
     firefly_ult_flat = 60.0
     summon_speed = 70.0
-    target_moves_list = [4, 5]
     # ==========================
 
     # 加载默认头像（如果未提供）
