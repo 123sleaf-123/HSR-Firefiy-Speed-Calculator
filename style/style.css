@@ -222,3 +222,38 @@ button.btn-primary:hover { opacity: 0.9; }
 
 /* 隐藏复选框，完全靠点击卡片触发 */
 .hidden-cb { display: none; }
+
+export-mode {
+        width: 1000px !important; /* 强制固定宽度 */
+        padding: 20px !important;
+        background-color: #fff !important;
+        position: absolute; /* 脱离文档流，避免影响页面 */
+        top: 0;
+        left: -9999px; /* 移出屏幕可视区域 */
+        z-index: -1;
+    }
+
+    /* 截图模式下的行样式：强制横向 */
+    .export-mode .result-row {
+        flex-direction: row !important;
+        align-items: center !important;
+        border-radius: 0; /* 截图时可能想要更锐利的边缘，可选 */
+        box-shadow: none;
+        border-bottom: 1px solid #eee;
+    }
+
+    .export-mode .team-avatars {
+        margin-bottom: 0 !important;
+        width: auto !important;
+        margin-right: 20px !important;
+    }
+
+    .export-mode .result-info {
+        font-size: 14px !important;
+        flex-wrap: nowrap !important; /* 强制不换行 */
+    }
+    
+    .export-mode .result-info div {
+        width: auto !important; /* 取消手机端的宽度限制 */
+        margin-right: 15px;
+    }
