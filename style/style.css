@@ -164,7 +164,7 @@ input[type="checkbox"] {
 
 /* 次数输入框 */
 .times-control { font-size: 11px; color: #666; display: flex; align-items: center; justify-content: center; gap: 2px; }
-.times-input { width: 30px !important; font-size: 11px; padding: 2px; height: 20px; }
+.times-input { width: 40px !important; font-size: 11px; padding: 2px; height: 20px; }
 
 /* --- 结果列表 --- */
 #results-area {
@@ -214,9 +214,9 @@ input[type="checkbox"] {
     display: flex; align-items: center; justify-content: center; font-weight: bold;
     box-shadow: 0 0 0 1px #fff;
 }
-.dot-cost { top: -5%; background: var(--red-dot); }
-.dot-555 { bottom: -5%; background: var(--blue-dot); }
-.dot-times { top: 30%; background: var(--green-dot); }
+.dot-cost { top: 0%; background: var(--red-dot); }
+.dot-555 { bottom: 0%; background: var(--blue-dot); }
+.dot-times { top: 35%; background: var(--green-dot); }
 
 .result-info {
     display: grid;

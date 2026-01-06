@@ -24,20 +24,22 @@
                 <label><input type="checkbox" name="target_moves" value="4" checked onchange="calculate()">4</label>
                 <label><input type="checkbox" name="target_moves" value="5" checked onchange="calculate()">5</label>
                 <label><input type="checkbox" name="target_moves" value="6" onchange="calculate()">6</label>
+                <label><input type="checkbox" name="target_moves" value="7" onchange="calculate()">7</label>
+                <label><input type="checkbox" name="target_moves" value="8" onchange="calculate()">8</label>
             </div>
             
             <div class="control-group">
                 <span class="info-label">速度:</span>
-                <input type="number" id="min_spd" value="100" onchange="calculate()"> 
+                <input type="number" id="min_spd" value="100" onchange="calculate(this)"> 
                 <span>-</span>
-                <input type="number" id="max_spd" value="300" onchange="calculate()">
+                <input type="number" id="max_spd" value="300" onchange="calculate(this)">
             </div>
 
             <div class="control-group">
                 <span class="info-label">金数:</span>
-                <input type="number" id="min_cost" value="0" onchange="calculate()"> 
+                <input type="number" id="min_cost" value="0" onchange="calculate(this)"> 
                 <span>-</span>
-                <input type="number" id="max_cost" value="11" onchange="calculate()">
+                <input type="number" id="max_cost" value="11" onchange="calculate(this)">
             </div>
         </div>
     </div>
@@ -82,6 +84,13 @@
         "开拓者":       { spd_pct: 0.00, advance: 0.00, base: "kaituozhe", cost: 0, img: "avatars/aki.jpg", times: 1 },
         "加拉赫/灵砂":  { spd_pct: 0.00, advance: 0.00, base: "heel", cost: 0,      img: "avatars/lingsha.jpg", times: 1 },
     };
+
+    let conditionData = {
+        'minSpd': 100,
+        'maxSpd': 300,
+        'minCost': 0,
+        'maxCost': 11,
+    }
 
     let selectedCandidates = new Set(Object.keys(CANDIDATES_DATA));
     let candidateTimes = {};
@@ -173,14 +182,49 @@
         return ret;
     }
 
-    function calculate() {
+    function calculate(el=NaN) {
         const resultsArea = document.getElementById('results-area');
         resultsArea.innerHTML = '';
 
-        const minSpd = parseFloat(document.getElementById('min_spd').value) || 0;
-        const maxSpd = parseFloat(document.getElementById('max_spd').value) || 999;
-        const minCost = parseInt(document.getElementById('min_cost').value) || 0;
-        const maxCost = parseInt(document.getElementById('max_cost').value) || 99;
+        // 1. 获取过滤条件并做约束（防止输入负数或 max < min）
+        let minSpd = parseFloat(document.getElementById('min_spd').value);
+        let maxSpd = parseFloat(document.getElementById('max_spd').value);
+        let minCost = parseInt(document.getElementById('min_cost').value);
+        let maxCost = parseInt(document.getElementById('max_cost').value);
+
+        if (el && el.id === 'min_spd' && minSpd >= maxSpd) {
+            minSpd = conditionData.maxSpd - 1;
+            minSpd.value = minSpd;
+        }
+        // 如果用户修改的是“最大速度”，且输入值小于了最小值 -> 强行把最大值推回(Clamp)到最小值
+        else if (el && el.id === 'max_spd' && maxSpd <= minSpd) {
+            maxSpd = conditionData.minSpd + 1;
+            maxSpd.value = maxSpd;
+        } 
+        // 防止负数的基础校验
+        minSpd = Math.max(0, minSpd);
+        maxSpd = Math.max(0, maxSpd);
+
+        if (el && el.id === 'min_cost' && minCost >= maxCost) {
+            minCost = conditionData.maxCost - 1;
+            minCost.value = minCost;
+        }
+        else if (el && el.id === 'max_cost' && maxCost <= minCost) {
+            maxCost = conditionData.minCost + 1;
+            maxCost.value = maxCost;
+        }
+        // 防止负数
+        minCost = Math.max(0, minCost);
+        maxCost = Math.max(0, maxCost);
+
+        // 将修正后的值回写到输入框，保证 UI 与内部一致
+        document.getElementById('min_spd').value = Math.round(minSpd);
+        document.getElementById('max_spd').value = Math.round(maxSpd);
+        document.getElementById('min_cost').value = Math.round(minCost);
+        document.getElementById('max_cost').value = Math.round(maxCost);
+
+        // 确保内部数据一致
+        conditionData = { minSpd, maxSpd, minCost, maxCost };
         
         const targetMoves = [];
         document.querySelectorAll('input[name="target_moves"]:checked').forEach(el => targetMoves.push(parseInt(el.value)));
