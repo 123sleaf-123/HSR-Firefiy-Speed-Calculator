@@ -8,62 +8,64 @@
     <link rel="stylesheet" href="./style/style.css">
 </head>
 <body>
-
 <div class="container">
     <div class="panel">
         <div class="panel-header">
-            <h2 style="margin:0">流萤配队计算器</h2>
-            <div>
-                <button class="btn-primary" onclick="calculate()">刷新计算</button>
-                <button class="btn-primary" onclick="exportImage()" style="background-color:#10b981">保存为图片</button>
+            <h2>流萤配速</h2>
+            <div class="header-btns">
+                <button class="btn-primary" onclick="calculate()">刷新</button>
+                <button class="btn-primary" onclick="exportImage()" style="background-color:#10b981">存图</button>
             </div>
         </div>
 
         <div class="controls-row">
             <div class="control-group">
-                <span class="info-val">目标回合:</span>
-                <label><input type="checkbox" name="target_moves" value="4" checked onchange="calculate()"> 4动</label>
-                <label><input type="checkbox" name="target_moves" value="5" checked onchange="calculate()"> 5动</label>
-                <label><input type="checkbox" name="target_moves" value="6" onchange="calculate()"> 6动</label>
-                <label><input type="checkbox" name="target_moves" value="7" onchange="calculate()"> 7动</label>
-                <label><input type="checkbox" name="target_moves" value="8" onchange="calculate()"> 8动</label>
+                <span class="info-label">动数:</span>
+                <label><input type="checkbox" name="target_moves" value="4" checked onchange="calculate()">4</label>
+                <label><input type="checkbox" name="target_moves" value="5" checked onchange="calculate()">5</label>
+                <label><input type="checkbox" name="target_moves" value="6" onchange="calculate()">6</label>
             </div>
             
             <div class="control-group">
-                <span class="info-val">速度范围:</span>
-                <input type="number" id="min_spd" value="100" onchange="calculate()"> - 
+                <span class="info-label">速度:</span>
+                <input type="number" id="min_spd" value="100" onchange="calculate()"> 
+                <span>-</span>
                 <input type="number" id="max_spd" value="300" onchange="calculate()">
             </div>
 
             <div class="control-group">
-                <span class="info-val">金数(Cost):</span>
-                <input type="number" id="min_cost" value="0" onchange="calculate()"> - 
+                <span class="info-label">金数:</span>
+                <input type="number" id="min_cost" value="0" onchange="calculate()"> 
+                <span>-</span>
                 <input type="number" id="max_cost" value="11" onchange="calculate()">
             </div>
         </div>
     </div>
 
     <div class="panel">
-        <h4>候选角色 (点击选择，输入触发次数)</h4>
-        <div class="controls-row" style="margin-bottom:10px; font-size:12px;">
-            <a href="javascript:void(0)" onclick="toggleAll(true)">全选</a> / 
-            <a href="javascript:void(0)" onclick="toggleAll(false)">全不选</a>
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <h4 style="margin:0">角色选择</h4>
+            <div style="font-size:12px;">
+                <a href="javascript:void(0)" onclick="toggleAll(true)">全选</a> / 
+                <a href="javascript:void(0)" onclick="toggleAll(false)">清空</a>
+            </div>
         </div>
+        
         <div id="char-grid" class="char-grid">
             </div>
     </div>
 
-    <div id="capture-area">
-        <h3 style="margin-bottom:10px; padding-left:10px;">
-            计算结果
-        </h3>
-        <div id="results-area">
-            </div>
+    <div id="capture-wrapper" style="overflow-x: auto;">
+        <div id="capture-area">
+            <h3 style="margin: 0 0 10px 10px;">计算结果</h3>
+            <div id="results-area">
+                </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- 1. 配置数据 (对应 Python CONSTANTS 和 CANDIDATES_DATA) ---
+    // --- 1. 配置数据 ---
     const CONSTANTS = {
         FIREFLY_BASE_SPD: 104.0,
         FIREFLY_ULT_FLAT: 60.0,
@@ -81,49 +83,45 @@
         "加拉赫/灵砂":  { spd_pct: 0.00, advance: 0.00, base: "heel", cost: 0,      img: "avatars/lingsha.jpg", times: 1 },
     };
 
-    // 状态管理
-    let selectedCandidates = new Set(Object.keys(CANDIDATES_DATA)); // 默认全选
-    let candidateTimes = {}; // 存储每个角色的触发次数
+    let selectedCandidates = new Set(Object.keys(CANDIDATES_DATA));
+    let candidateTimes = {};
 
-    // --- 2. 初始化 UI ---
+    // --- 2. 初始化 ---
     function initUI() {
         const grid = document.getElementById('char-grid');
         grid.innerHTML = '';
 
         for (const [name, data] of Object.entries(CANDIDATES_DATA)) {
-            // 初始化次数
             candidateTimes[name] = data.times;
-            const d = CANDIDATES_DATA[name];
 
             const card = document.createElement('div');
             card.className = `char-card ${selectedCandidates.has(name) ? 'selected' : ''}`;
             card.dataset.name = name;
+            
+            // 点击事件：如果是点击输入框，阻止冒泡
             card.onclick = (e) => {
-                // 如果点击的是输入框，不触发选中切换
                 if(e.target.tagName === 'INPUT') return;
                 toggleCandidate(name, card);
             };
 
-            // 图片处理：尝试使用img标签，如果需要测试请确保图片存在，否则显示首字
-            // 为了演示效果，这里使用文字占位，如果你有图片，取消img注释
             const firstChar = name.charAt(0);
-            avatarContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;
             
-            // 构建HTML
+            // 图片逻辑：优先显示图片，失败显示文字
+            // 默认用文字占位，你有图片请取消下方 img 注释
+            let imgHtml = `<img src="${data.img}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"> <span style="display:none">${firstChar}</span>`;
+            // let imgHtml = `<span>${firstChar}</span>`; 
+
             card.innerHTML = `
-                <div class="char-img-box">
-                    <!-- <span>${firstChar}</span> -->
-                    ${avatarContent}
-                </div>
+                <div class="char-img-box">${imgHtml}</div>
                 <div class="char-name">${name}</div>
-                <div style="font-size:12px; color:#666;">
+                <div class="times-control">
                     × <input type="number" class="times-input" value="${candidateTimes[name]}" 
                       onchange="updateTimes('${name}', this.value)" min="1" max="10">
                 </div>
             `;
             grid.appendChild(card);
         }
-        calculate(); // 初始计算
+        calculate();
     }
 
     function toggleCandidate(name, cardElement) {
@@ -157,8 +155,7 @@
         calculate();
     }
 
-    // --- 3. 核心计算逻辑 ---
-    // 辅助：获取数组的组合 (n选k)
+    // --- 3. 计算核心 ---
     function getCombinations(arr, k) {
         let i, subI, ret = [], sub, next;
         for (i = 0; i < arr.length; i++) {
@@ -180,7 +177,6 @@
         const resultsArea = document.getElementById('results-area');
         resultsArea.innerHTML = '';
 
-        // 1. 获取过滤条件
         const minSpd = parseFloat(document.getElementById('min_spd').value) || 0;
         const maxSpd = parseFloat(document.getElementById('max_spd').value) || 999;
         const minCost = parseInt(document.getElementById('min_cost').value) || 0;
@@ -190,61 +186,42 @@
         document.querySelectorAll('input[name="target_moves"]:checked').forEach(el => targetMoves.push(parseInt(el.value)));
 
         const activeCandidatesList = Array.from(selectedCandidates);
-        
-        // 2. 生成3人组合
         const combinations = getCombinations(activeCandidatesList, 3);
         const validResults = [];
 
         combinations.forEach(team => {
-            // 检查 Base 是否重复
             const bases = team.map(name => CANDIDATES_DATA[name].base);
             const uniqueBases = new Set(bases);
             if (uniqueBases.size !== bases.length) return;
 
-            // 计算队伍参数
-            let totalAdvance = 0;
-            let totalSpdPct = 0;
-            let totalCost = 0;
+            let totalAdvance = 0, totalSpdPct = 0, totalCost = 0;
 
             team.forEach(name => {
                 const d = CANDIDATES_DATA[name];
-                const times = candidateTimes[name]; // 获取动态设置的次数
+                const times = candidateTimes[name];
                 totalAdvance += d.advance * times;
                 totalSpdPct += d.spd_pct;
                 totalCost += d.cost;
             });
 
-            // 针对每个目标回合计算
             targetMoves.forEach(moves => {
                 const countdownAv = 10000.0 / CONSTANTS.SUMMON_SPEED;
                 const intervals = moves - 1;
                 const totalDistance = (10000.0 * intervals) - (10000.0 * totalAdvance);
                 const reqIngameSpeed = totalDistance / countdownAv;
                 const reqPanelSpeed = reqIngameSpeed - CONSTANTS.FIREFLY_ULT_FLAT - (CONSTANTS.FIREFLY_BASE_SPD * totalSpdPct);
-                
-                // 最终面板显示速度 (不能低于基础速度)
-                const displaySpeed = Math.max(0, reqPanelSpeed, CONSTANTS.FIREFLY_BASE_SPD); // 这里逻辑稍微注意：如果需求极低，其实只要大于等于基速即可
+                const displaySpeed = Math.max(0, reqPanelSpeed, CONSTANTS.FIREFLY_BASE_SPD);
 
-                // 筛选
                 if (displaySpeed >= minSpd && displaySpeed <= maxSpd && totalCost >= minCost && totalCost <= maxCost) {
-                    validResults.push({
-                        team: team,
-                        moves: moves,
-                        speed: displaySpeed,
-                        cost: totalCost,
-                        spdPct: totalSpdPct,
-                        advancePct: totalAdvance
-                    });
+                    validResults.push({ team, moves, speed: displaySpeed, cost: totalCost, spdPct: totalSpdPct, advancePct: totalAdvance });
                 }
             });
         });
 
-        // 3. 排序 (按 Cost 降序，如同 Python 版)
         validResults.sort((a, b) => b.cost - a.cost);
 
-        // 4. 渲染结果
         if (validResults.length === 0) {
-            resultsArea.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">未找到符合条件的配队</div>';
+            resultsArea.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">无符合条件的结果</div>';
             return;
         }
 
@@ -252,57 +229,44 @@
             const row = document.createElement('div');
             row.className = 'result-row';
 
-            // 头像部分
             let avatarsHtml = '';
             r.team.forEach(name => {
                 const d = CANDIDATES_DATA[name];
                 const times = candidateTimes[name];
                 
-                // 红点 Cost
                 let costBadge = d.cost > 1 ? `<div class="dot dot-cost">${d.cost - 1}</div>` : '';
-                // 蓝点 555
                 let wuwuwuBadge = name.includes('555') ? `<div class="dot dot-555">5</div>` : '';
-                // 绿点 Times
-                let timesBadge = times > 1 ? `<div class="dot dot-times">${times}</div>` : '';
-
-                // 图片(或占位)
-                // 如果你有图片，取消注释下方img，注释掉span
+                let timesBadge = times > 1 ? `<div class="dot dot-times">x${times}</div>` : '';
+                
+                // 图片显示：有图片显示图片，无图片显示首字
+                let imgContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;
                 // let imgContent = `<span>${name[0]}</span>`;
-                imgContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;
 
                 avatarsHtml += `
                     <div class="avatar-wrapper">
-                        <div class="mini-avatar" title="${name}">
-                            ${imgContent}
-                        </div>
-                        ${costBadge}
-                        ${wuwuwuBadge}
-                        ${timesBadge}
-                    </div>
-                `;
+                        <div class="mini-avatar">${imgContent}</div>
+                        ${costBadge}${wuwuwuBadge}${timesBadge}
+                    </div>`;
             });
 
+            // 使用 Grid 布局的数据展示，手机端分两列
             row.innerHTML = `
-                <div class="team-avatars">
-                    ${avatarsHtml}
-                </div>
+                <div class="team-avatars">${avatarsHtml}</div>
                 <div class="result-info">
-                    <div>
-                        <span class="info-label">目标:</span> 
+                    <div class="info-item">
+                        <span class="info-label">目标</span> 
                         <span class="moves-badge">${r.moves} 动</span>
                     </div>
-                    <div>
-                        <span class="info-label">金数:</span> <span class="info-val">${r.cost}</span>
+                    <div class="info-item">
+                        <span class="info-label">金数</span> <span class="info-val">${r.cost}</span>
+                        <span class="info-label">速度</span> 
+                        <span class="info-val" style="color:#2563eb;">${r.speed.toFixed(1)}</span>
                     </div>
-                    <div>
-                        <span class="info-label">面板速度:</span> 
-                        <span class="info-val" style="font-size:16px; color:#2563eb;">${r.speed.toFixed(1)}</span>
-                    </div>                    
-                    <div>
-                        <span class="info-label">全队拉条:</span> ${(r.advancePct * 100).toFixed(0)}%
+                    <div class="info-item">
+                        <span class="info-label">拉条</span> <span>${(r.advancePct * 100).toFixed(0)}%</span>
                     </div>
-                    <div>
-                        <span class="info-label">全队速加:</span> ${(r.spdPct * 100).toFixed(0)}%
+                    <div class="info-item">
+                        <span class="info-label">速加</span> <span>${(r.spdPct * 100).toFixed(0)}%</span>
                     </div>
                 </div>
             `;
@@ -310,46 +274,40 @@
         });
     }
 
-    // --- 4. 导出图片 ---
+    // --- 4. 导出逻辑 (关键优化) ---
     function exportImage() {
-        // 获取原始 DOM
-        const originalElement = document.getElementById('results-area');
+        const captureArea = document.getElementById('capture-area');
         
-        // 如果没有结果，不导出
-        if (!originalElement || originalElement.children.length === 0) {
-            alert("没有结果可导出");
-            return;
-        }
+        // 1. 添加 .capture-mode 类，强制应用桌面端布局样式
+        captureArea.classList.add('capture-mode');
+        
+        // 2. 临时调整背景，防止透明
+        const originalBg = captureArea.style.background;
+        captureArea.style.background = "#fff";
 
-        // 创建一个提示 loading
-        const btn = event.target; // 假设是按钮触发
-        const originalText = btn.innerText;
-        btn.innerText = "生成中...";
-        btn.disabled = true;
-
-        // 配置 html2canvas
-        html2canvas(originalElement, {
-            scale: 2, // 高清
+        // 3. 开始截图
+        html2canvas(captureArea, {
+            scale: 2, // 2倍清晰度
             useCORS: true,
+            width: 840, // 强制设置宽度，确保内容不被裁剪
+            windowWidth: 1200 // 模拟大屏浏览器窗口宽度
         }).then(canvas => {
-            // 下载逻辑
-            const link = document.createElement('a');
-            link.download = `firefly_analysis_${new Date().getTime()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            // 4. 恢复样式
+            captureArea.classList.remove('capture-mode');
+            captureArea.style.background = originalBg;
 
-            // 恢复按钮
-            btn.innerText = originalText;
-            btn.disabled = false;
+            // 5. 下载
+            const link = document.createElement('a');
+            link.download = 'firefly_calc_result.png';
+            link.href = canvas.toDataURL();
+            link.click();
         }).catch(err => {
-            console.error("导出失败:", err);
-            btn.innerText = originalText;
-            btn.disabled = false;
-            alert("导出图片出错，请检查控制台");
+            console.error(err);
+            alert("生成图片失败，请刷新重试");
+            captureArea.classList.remove('capture-mode');
         });
     }
 
-    // 启动
     initUI();
 </script>
 

@@ -174,11 +174,13 @@ input[type="checkbox"] {
     background: white;
     padding: 10px; /* 手机端减小内边距 */
     border-radius: 12px;
+    max-width: 500px; /* 或你希望的任意值，比如 600px、800px */
+    margin: 0 auto;   /* 居中 */
 }
 
 .result-row {
     display: flex;
-    flex-direction: column; /* 手机默认纵向 */
+    flex-direction: row; 
     align-items: stretch;
     padding: 12px;
     border: 1px solid var(--border);
@@ -214,11 +216,11 @@ input[type="checkbox"] {
 }
 .dot-cost { top: -4px; background: var(--red-dot); }
 .dot-555 { bottom: -4px; background: var(--blue-dot); }
-.dot-times { bottom: -18px; left: 50%; transform: translateX(-50%); background: var(--green-dot); width: auto; padding: 1px 4px; border-radius: 4px; white-space: nowrap; font-size: 10px; }
+.dot-times { top: 15px; background: var(--green-dot); }
 
 .result-info {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 手机端两列 */
+    grid-template-columns: 1 1fr; 
     gap: 8px;
     font-size: 13px;
     background: #f8fafc;
@@ -226,7 +228,7 @@ input[type="checkbox"] {
     border-radius: 6px;
 }
 
-.info-item { display: flex; justify-content: space-between; align-items: center; }
+.info-item { display: flex; gap: 5px; align-items: center; }
 .info-label { color: var(--text-sub); }
 .info-val { font-weight: bold; color: var(--text-main); }
 
@@ -251,12 +253,12 @@ input[type="checkbox"] {
     .result-info {
         background: transparent;
         padding: 0;
-        grid-template-columns: repeat(4, 1fr); /* 电脑端4列显示更紧凑 */
+        grid-template-columns: repeat(1, 1fr); 
         flex: 1;
         gap: 5px 20px;
     }
     .info-item { justify-content: flex-start; gap: 5px; }
-    .dot-times { bottom: -5px; left: -5px; transform: none; } /* 微调PC端标记位置 */
+    .dot-times { bottom: 15px; transform: none; } /* 微调PC端标记位置 */
     
     .control-group { background: transparent; border: none; padding: 0; }
 }
@@ -289,6 +291,6 @@ input[type="checkbox"] {
     bottom: -5px !important; left: -5px !important; transform: none !important;
 }
 .capture-mode #results-area {
-    width: 800px !important; /* 强制固定宽度 */
+    width: 500px !important; /* 强制固定宽度 */
     padding: 20px !important;
 }
