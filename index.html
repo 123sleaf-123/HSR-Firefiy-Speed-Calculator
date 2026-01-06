@@ -236,7 +236,7 @@
                 
                 let costBadge = d.cost > 1 ? `<div class="dot dot-cost">${d.cost - 1}</div>` : '';
                 let wuwuwuBadge = name.includes('555') ? `<div class="dot dot-555">5</div>` : '';
-                let timesBadge = times > 1 ? `<div class="dot dot-times">x${times}</div>` : '';
+                let timesBadge = times > 1 ? `<div class="dot dot-times">${times}</div>` : '';
                 
                 // 图片显示：有图片显示图片，无图片显示首字
                 let imgContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;

@@ -195,9 +195,9 @@ input[type="checkbox"] {
     gap: 12px;
 }
 
-.avatar-wrapper { position: relative; width: 48px; height: 48px; }
+.avatar-wrapper { position: relative; width: 64px; height: 64px; }
 .mini-avatar {
-    width: 48px; height: 48px;
+    width: 64px; height: 64px;
     border-radius: 50%;
     background: #f3f4f6;
     display: flex; align-items: center; justify-content: center;
@@ -209,14 +209,14 @@ input[type="checkbox"] {
 
 /* 标记点 */
 .dot {
-    position: absolute; right: -4px; width: 16px; height: 16px;
-    border-radius: 50%; color: white; font-size: 9px;
+    position: absolute; right: -4px; width: 20px; height: 20px;
+    border-radius: 50%; color: white; font-size: 11px;
     display: flex; align-items: center; justify-content: center; font-weight: bold;
     box-shadow: 0 0 0 1px #fff;
 }
-.dot-cost { top: -4px; background: var(--red-dot); }
-.dot-555 { bottom: -4px; background: var(--blue-dot); }
-.dot-times { top: 15px; background: var(--green-dot); }
+.dot-cost { top: -5%; background: var(--red-dot); }
+.dot-555 { bottom: -5%; background: var(--blue-dot); }
+.dot-times { top: 30%; background: var(--green-dot); }
 
 .result-info {
     display: grid;
@@ -265,32 +265,4 @@ input[type="checkbox"] {
 
 /* --- 截图专用模式 (强制宽屏布局) --- */
 /* 当容器加上 .capture-mode 类时，强制使用桌面布局，防止生成的图片是竖长的 */
-.capture-mode .result-row {
-    flex-direction: row !important;
-    align-items: center !important;
-    border: none !important; /* 截图去边框 */
-    border-bottom: 1px solid #eee !important;
-    padding: 15px 5px !important;
-}
-.capture-mode .team-avatars {
-    justify-content: flex-start !important;
-    width: 200px !important;
-}
-.capture-mode .result-info {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important; /* 截图时保持整齐的两列 */
-    background: transparent !important;
-    padding: 0 !important;
-}
-.capture-mode .info-item {
-    justify-content: flex-start !important;
-    gap: 10px !important;
-}
-.capture-mode .dot-times {
-    /* 截图时微调绿点位置 */
-    bottom: -5px !important; left: -5px !important; transform: none !important;
-}
-.capture-mode #results-area {
-    width: 500px !important; /* 强制固定宽度 */
-    padding: 20px !important;
-}
+ 
