@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星穹铁道配队计算器 (Web版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --border: #e2e8f0;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --red-dot: #ef4444;
+            --blue-dot: #3b82f6;
+            --green-dot: #10b981;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* --- 控制面板 --- */
+        .panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        button.btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button.btn-primary:hover { opacity: 0.9; }
+
+        /* --- 角色选择网格 --- */
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .char-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .char-card.selected {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+        }
+
+        .char-img-box {
+            width: 64px;
+            height: 64px;
+            background-color: #ddd;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 24px;
+            color: #888;
+            position: relative;
+        }
+        
+        .char-img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .char-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .times-input {
+            width: 40px !important;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        /* --- 结果列表 --- */
+        #results-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: white; /* 为了截图，背景设为纯白 */
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .result-row {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .team-avatars {
+            display: flex;
+            gap: 15px;
+            width: 250px;
+        }
+
+        .avatar-wrapper {
+            position: relative;
+            width: 50px;
+            height: 50px;
+        }
+
+        .mini-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #999;
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+        
+        .mini-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 标记点样式 */
+        .dot {
+            position: absolute;
+            right: -5px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            color: white;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .dot-cost { top: -5px; background: var(--red-dot); }
+        .dot-555 { bottom: -5px; background: var(--blue-dot); }
+        /*.dot-times { bottom: -20px; left: 15px; background: var(--green-dot); width: auto; padding: 0 4px; border-radius: 4px; }*/
+        .dot-times { top: 15px; background: var(--green-dot); }
+
+        .result-info {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 20px;
+            font-size: 14px;
+            margin-left: 20px;
+        }
+        
+        .info-label { color: var(--text-sub); margin-right: 5px; }
+        .info-val { font-weight: bold; }
+        
+        .moves-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* 隐藏复选框，完全靠点击卡片触发 */
+        .hidden-cb { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <div class="panel-header">
+            <h2 style="margin:0">流萤配队计算器</h2>
+            <div>
+                <button class="btn-primary" onclick="calculate()">刷新计算</button>
+                <button class="btn-primary" onclick="exportImage()" style="background-color:#10b981">保存为图片</button>
+            </div>
+        </div>
+
+        <div class="controls-row">
+            <div class="control-group">
+                <span class="info-val">目标回合:</span>
+                <label><input type="checkbox" name="target_moves" value="4" checked onchange="calculate()"> 4动</label>
+                <label><input type="checkbox" name="target_moves" value="5" checked onchange="calculate()"> 5动</label>
+                <label><input type="checkbox" name="target_moves" value="6" onchange="calculate()"> 6动</label>
+                <label><input type="checkbox" name="target_moves" value="7" onchange="calculate()"> 7动</label>
+                <label><input type="checkbox" name="target_moves" value="8" onchange="calculate()"> 8动</label>
+            </div>
+            
+            <div class="control-group">
+                <span class="info-val">速度范围:</span>
+                <input type="number" id="min_spd" value="100" onchange="calculate()"> - 
+                <input type="number" id="max_spd" value="300" onchange="calculate()">
+            </div>
+
+            <div class="control-group">
+                <span class="info-val">金数(Cost):</span>
+                <input type="number" id="min_cost" value="0" onchange="calculate()"> - 
+                <input type="number" id="max_cost" value="11" onchange="calculate()">
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h4>候选角色 (点击选择，输入触发次数)</h4>
+        <div class="controls-row" style="margin-bottom:10px; font-size:12px;">
+            <a href="javascript:void(0)" onclick="toggleAll(true)">全选</a> / 
+            <a href="javascript:void(0)" onclick="toggleAll(false)">全不选</a>
+        </div>
+        <div id="char-grid" class="char-grid">
+            </div>
+    </div>
+
+    <div id="capture-area">
+        <h3 style="margin-bottom:10px; padding-left:10px;">
+            计算结果
+        </h3>
+        <div id="results-area">
+            </div>
+    </div>
+</div>
+
+<script>
+    // --- 1. 配置数据 (对应 Python CONSTANTS 和 CANDIDATES_DATA) ---
+    const CONSTANTS = {
+        FIREFLY_BASE_SPD: 104.0,
+        FIREFLY_ULT_FLAT: 60.0,
+        SUMMON_SPEED: 70.0,
+    };
+
+    const CANDIDATES_DATA = {
+        "大丽花":       { spd_pct: 0.30, advance: 0.00, base: "dahlia", cost: 1, img: "avatars/dahlia.jpg", times: 1 },
+        "6魂大丽花":    { spd_pct: 0.30, advance: 0.20, base: "dahlia", cost: 7, img: "avatars/dahlia6.jpg", times: 1 },
+        "忘归人":       { spd_pct: 0.00, advance: 0.00, base: "wang", cost: 1,   img: "avatars/wang.jpg", times: 1 },
+        "2魂忘归人":    { spd_pct: 0.00, advance: 0.24, base: "wang", cost: 3,   img: "avatars/wang2.jpg", times: 1 },
+        "阮·梅":        { spd_pct: 0.10, advance: 0.00, base: "ruan", cost: 0,   img: "avatars/ruan.jpg", times: 1 },
+        "开拓者(555)":  { spd_pct: 0.00, advance: 0.24, base: "kaituozhe", cost: 0, img: "avatars/aki.jpg", times: 1 },
+        "开拓者":       { spd_pct: 0.00, advance: 0.00, base: "kaituozhe", cost: 0, img: "avatars/aki.jpg", times: 1 },
+        "加拉赫/灵砂":  { spd_pct: 0.00, advance: 0.00, base: "heel", cost: 0,      img: "avatars/lingsha.jpg", times: 1 },
+    };
+
+    // 状态管理
+    let selectedCandidates = new Set(Object.keys(CANDIDATES_DATA)); // 默认全选
+    let candidateTimes = {}; // 存储每个角色的触发次数
+
+    // --- 2. 初始化 UI ---
+    function initUI() {
+        const grid = document.getElementById('char-grid');
+        grid.innerHTML = '';
+
+        for (const [name, data] of Object.entries(CANDIDATES_DATA)) {
+            // 初始化次数
+            candidateTimes[name] = data.times;
+            const d = CANDIDATES_DATA[name];
+
+            const card = document.createElement('div');
+            card.className = `char-card ${selectedCandidates.has(name) ? 'selected' : ''}`;
+            card.dataset.name = name;
+            card.onclick = (e) => {
+                // 如果点击的是输入框，不触发选中切换
+                if(e.target.tagName === 'INPUT') return;
+                toggleCandidate(name, card);
+            };
+
+            // 图片处理：尝试使用img标签，如果需要测试请确保图片存在，否则显示首字
+            // 为了演示效果，这里使用文字占位，如果你有图片，取消img注释
+            const firstChar = name.charAt(0);
+            avatarContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;
+            
+            // 构建HTML
+            card.innerHTML = `
+                <div class="char-img-box">
+                    <!-- <span>${firstChar}</span> -->
+                    ${avatarContent}
+                </div>
+                <div class="char-name">${name}</div>
+                <div style="font-size:12px; color:#666;">
+                    × <input type="number" class="times-input" value="${candidateTimes[name]}" 
+                      onchange="updateTimes('${name}', this.value)" min="1" max="10">
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+        calculate(); // 初始计算
+    }
+
+    function toggleCandidate(name, cardElement) {
+        if (selectedCandidates.has(name)) {
+            selectedCandidates.delete(name);
+            cardElement.classList.remove('selected');
+        } else {
+            selectedCandidates.add(name);
+            cardElement.classList.add('selected');
+        }
+        calculate();
+    }
+
+    function toggleAll(selectAll) {
+        const cards = document.querySelectorAll('.char-card');
+        cards.forEach(card => {
+            const name = card.dataset.name;
+            if (selectAll) {
+                selectedCandidates.add(name);
+                card.classList.add('selected');
+            } else {
+                selectedCandidates.delete(name);
+                card.classList.remove('selected');
+            }
+        });
+        calculate();
+    }
+
+    function updateTimes(name, value) {
+        candidateTimes[name] = parseInt(value) || 1;
+        calculate();
+    }
+
+    // --- 3. 核心计算逻辑 ---
+    // 辅助：获取数组的组合 (n选k)
+    function getCombinations(arr, k) {
+        let i, subI, ret = [], sub, next;
+        for (i = 0; i < arr.length; i++) {
+            if (k === 1) {
+                ret.push([arr[i]]);
+            } else {
+                sub = getCombinations(arr.slice(i + 1), k - 1);
+                for (subI = 0; subI < sub.length; subI++) {
+                    next = sub[subI];
+                    next.unshift(arr[i]);
+                    ret.push(next);
+                }
+            }
+        }
+        return ret;
+    }
+
+    function calculate() {
+        const resultsArea = document.getElementById('results-area');
+        resultsArea.innerHTML = '';
+
+        // 1. 获取过滤条件
+        const minSpd = parseFloat(document.getElementById('min_spd').value) || 0;
+        const maxSpd = parseFloat(document.getElementById('max_spd').value) || 999;
+        const minCost = parseInt(document.getElementById('min_cost').value) || 0;
+        const maxCost = parseInt(document.getElementById('max_cost').value) || 99;
+        
+        const targetMoves = [];
+        document.querySelectorAll('input[name="target_moves"]:checked').forEach(el => targetMoves.push(parseInt(el.value)));
+
+        const activeCandidatesList = Array.from(selectedCandidates);
+        
+        // 2. 生成3人组合
+        const combinations = getCombinations(activeCandidatesList, 3);
+        const validResults = [];
+
+        combinations.forEach(team => {
+            // 检查 Base 是否重复
+            const bases = team.map(name => CANDIDATES_DATA[name].base);
+            const uniqueBases = new Set(bases);
+            if (uniqueBases.size !== bases.length) return;
+
+            // 计算队伍参数
+            let totalAdvance = 0;
+            let totalSpdPct = 0;
+            let totalCost = 0;
+
+            team.forEach(name => {
+                const d = CANDIDATES_DATA[name];
+                const times = candidateTimes[name]; // 获取动态设置的次数
+                totalAdvance += d.advance * times;
+                totalSpdPct += d.spd_pct;
+                totalCost += d.cost;
+            });
+
+            // 针对每个目标回合计算
+            targetMoves.forEach(moves => {
+                const countdownAv = 10000.0 / CONSTANTS.SUMMON_SPEED;
+                const intervals = moves - 1;
+                const totalDistance = (10000.0 * intervals) - (10000.0 * totalAdvance);
+                const reqIngameSpeed = totalDistance / countdownAv;
+                const reqPanelSpeed = reqIngameSpeed - CONSTANTS.FIREFLY_ULT_FLAT - (CONSTANTS.FIREFLY_BASE_SPD * totalSpdPct);
+                
+                // 最终面板显示速度 (不能低于基础速度)
+                const displaySpeed = Math.max(0, reqPanelSpeed, CONSTANTS.FIREFLY_BASE_SPD); // 这里逻辑稍微注意：如果需求极低，其实只要大于等于基速即可
+
+                // 筛选
+                if (displaySpeed >= minSpd && displaySpeed <= maxSpd && totalCost >= minCost && totalCost <= maxCost) {
+                    validResults.push({
+                        team: team,
+                        moves: moves,
+                        speed: displaySpeed,
+                        cost: totalCost,
+                        spdPct: totalSpdPct,
+                        advancePct: totalAdvance
+                    });
+                }
+            });
+        });
+
+        // 3. 排序 (按 Cost 降序，如同 Python 版)
+        validResults.sort((a, b) => b.cost - a.cost);
+
+        // 4. 渲染结果
+        if (validResults.length === 0) {
+            resultsArea.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">未找到符合条件的配队</div>';
+            return;
+        }
+
+        validResults.forEach(r => {
+            const row = document.createElement('div');
+            row.className = 'result-row';
+
+            // 头像部分
+            let avatarsHtml = '';
+            r.team.forEach(name => {
+                const d = CANDIDATES_DATA[name];
+                const times = candidateTimes[name];
+                
+                // 红点 Cost
+                let costBadge = d.cost > 1 ? `<div class="dot dot-cost">${d.cost - 1}</div>` : '';
+                // 蓝点 555
+                let wuwuwuBadge = name.includes('555') ? `<div class="dot dot-555">5</div>` : '';
+                // 绿点 Times
+                let timesBadge = times > 1 ? `<div class="dot dot-times">${times}</div>` : '';
+
+                // 图片(或占位)
+                // 如果你有图片，取消注释下方img，注释掉span
+                // let imgContent = `<span>${name[0]}</span>`;
+                imgContent = `<img src="${d.img}" onerror="this.parentNode.innerHTML='<span>${name[0]}</span>'">`;
+
+                avatarsHtml += `
+                    <div class="avatar-wrapper">
+                        <div class="mini-avatar" title="${name}">
+                            ${imgContent}
+                        </div>
+                        ${costBadge}
+                        ${wuwuwuBadge}
+                        ${timesBadge}
+                    </div>
+                `;
+            });
+
+            row.innerHTML = `
+                <div class="team-avatars">
+                    ${avatarsHtml}
+                </div>
+                <div class="result-info">
+                    <div>
+                        <span class="info-label">目标:</span> 
+                        <span class="moves-badge">${r.moves} 动</span>
+                    </div>
+                    <div>
+                        <span class="info-label">面板速度:</span> 
+                        <span class="info-val" style="font-size:16px; color:#2563eb;">${r.speed.toFixed(1)}</span>
+                    </div>
+                    <div>
+                        <span class="info-label">金数:</span> <span class="info-val">${r.cost}</span>
+                    </div>
+                    <div>
+                        <span class="info-label">全队拉条:</span> ${(r.advancePct * 100).toFixed(0)}%
+                    </div>
+                    <div>
+                        <span class="info-label">全队速加:</span> ${(r.spdPct * 100).toFixed(0)}%
+                    </div>
+                </div>
+            `;
+            resultsArea.appendChild(row);
+        });
+    }
+
+    // --- 4. 导出图片 ---
+    function exportImage() {
+        const captureArea = document.getElementById('capture-area');
+        
+        // 临时调整样式以适应截图
+        const originalBg = captureArea.style.background;
+        captureArea.style.background = "#fff";
+        captureArea.style.padding = "20px";
+
+        html2canvas(captureArea, {
+            scale: 2, // 提高清晰度
+            useCORS: true // 允许跨域图片
+        }).then(canvas => {
+            // 恢复样式
+            captureArea.style.background = originalBg;
+            captureArea.style.padding = "";
+
+            // 下载
+            const link = document.createElement('a');
+            link.download = 'firefly_team_table.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    // 启动
+    initUI();
+</script>
+
+</body>
+</html>
