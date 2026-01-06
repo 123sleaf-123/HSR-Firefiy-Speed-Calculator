@@ -330,7 +330,7 @@
         // captureArea.style.background = "#fff";
 
         // 3. 开始截图
-        html2canvas(captureArea.getElementsByClassName, {
+        html2canvas(captureArea, {
             scale: 2, // 2倍清晰度
             useCORS: true,
         }).then(canvas => {
