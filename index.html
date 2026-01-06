@@ -320,7 +320,7 @@
 
     // --- 4. 导出逻辑 (关键优化) ---
     function exportImage() {
-        const captureArea = document.getElementById('capture-area');
+        const captureArea = document.getElementById('results-area');
         
         // 1. 添加 .capture-mode 类，强制应用桌面端布局样式
         captureArea.classList.add('capture-mode');
@@ -330,7 +330,7 @@
         // captureArea.style.background = "#fff";
 
         // 3. 开始截图
-        html2canvas(captureArea, {
+        html2canvas(captureArea.getElementsByClassName, {
             scale: 2, // 2倍清晰度
             useCORS: true,
         }).then(canvas => {
