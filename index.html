@@ -292,12 +292,12 @@
                         <span class="moves-badge">${r.moves} 动</span>
                     </div>
                     <div>
-                        <span class="info-label">面板速度:</span> 
-                        <span class="info-val" style="font-size:16px; color:#2563eb;">${r.speed.toFixed(1)}</span>
-                    </div>
-                    <div>
                         <span class="info-label">金数:</span> <span class="info-val">${r.cost}</span>
                     </div>
+                    <div>
+                        <span class="info-label">面板速度:</span> 
+                        <span class="info-val" style="font-size:16px; color:#2563eb;">${r.speed.toFixed(1)}</span>
+                    </div>                    
                     <div>
                         <span class="info-label">全队拉条:</span> ${(r.advancePct * 100).toFixed(0)}%
                     </div>
@@ -331,20 +331,6 @@
         html2canvas(originalElement, {
             scale: 2, // 高清
             useCORS: true,
-            // 关键点1: 设置 windowWidth 让库以为是在宽屏电脑上渲染
-            windowWidth: 1440, 
-            // 关键点2: 使用 onclone 回调来修改截图时刻的 DOM 样式
-            onclone: (clonedDoc) => {
-                const clonedContent = clonedDoc.getElementById('results-area');
-                
-                // 添加我们在 CSS 中定义的强制样式类
-                clonedContent.classList.add('export-mode');
-
-                // 可以在这里添加一个标题头，仅在图片中显示
-                const header = clonedDoc.createElement('div');
-                header.innerHTML = `<h3 style="text-align:center; margin-bottom:15px; color:#333;">流萤队伍配速表 (固定布局)</h3>`;
-                clonedContent.insertBefore(header, clonedContent.firstChild);
-            }
         }).then(canvas => {
             // 下载逻辑
             const link = document.createElement('a');
