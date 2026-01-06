@@ -224,7 +224,7 @@ button.btn-primary:hover { opacity: 0.9; }
 .hidden-cb { display: none; }
 
 export-mode {
-        width: 768px !important; /* 强制固定宽度 */
+        width: 1000px !important; /* 强制固定宽度 */
         padding: 20px !important;
         background-color: #fff !important;
         position: absolute; /* 脱离文档流，避免影响页面 */
