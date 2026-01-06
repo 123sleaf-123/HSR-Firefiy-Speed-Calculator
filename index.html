@@ -5,232 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>星穹铁道配队计算器 (Web版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #f5f7fa;
-            --card-bg: #ffffff;
-            --primary: #3b82f6;
-            --border: #e2e8f0;
-            --text-main: #1f2937;
-            --text-sub: #6b7280;
-            --red-dot: #ef4444;
-            --blue-dot: #3b82f6;
-            --green-dot: #10b981;
-        }
-
-        body {
-            font-family: 'Microsoft YaHei', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        /* --- 控制面板 --- */
-        .panel {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
-        }
-
-        .controls-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        input[type="number"] {
-            width: 60px;
-            padding: 4px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-        }
-
-        button.btn-primary {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button.btn-primary:hover { opacity: 0.9; }
-
-        /* --- 角色选择网格 --- */
-        .char-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .char-card {
-            background: var(--card-bg);
-            border: 2px solid transparent;
-            border-radius: 8px;
-            padding: 8px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .char-card.selected {
-            border-color: var(--primary);
-            background-color: #eff6ff;
-        }
-
-        .char-img-box {
-            width: 64px;
-            height: 64px;
-            background-color: #ddd;
-            border-radius: 50%;
-            margin: 0 auto 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            font-size: 24px;
-            color: #888;
-            position: relative;
-        }
-        
-        .char-img-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .char-name {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .times-input {
-            width: 40px !important;
-            font-size: 11px;
-            text-align: center;
-        }
-
-        /* --- 结果列表 --- */
-        #results-area {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: white; /* 为了截图，背景设为纯白 */
-            padding: 20px;
-            border-radius: 12px;
-        }
-
-        .result-row {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: #fff;
-        }
-
-        .team-avatars {
-            display: flex;
-            gap: 15px;
-            width: 250px;
-        }
-
-        .avatar-wrapper {
-            position: relative;
-            width: 50px;
-            height: 50px;
-        }
-
-        .mini-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: #eee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: #999;
-            border: 1px solid #ccc;
-            overflow: hidden;
-        }
-        
-        .mini-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* 标记点样式 */
-        .dot {
-            position: absolute;
-            right: -5px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            color: white;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-        .dot-cost { top: -5px; background: var(--red-dot); }
-        .dot-555 { bottom: -5px; background: var(--blue-dot); }
-        /*.dot-times { bottom: -20px; left: 15px; background: var(--green-dot); width: auto; padding: 0 4px; border-radius: 4px; }*/
-        .dot-times { top: 15px; background: var(--green-dot); }
-
-        .result-info {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px 20px;
-            font-size: 14px;
-            margin-left: 20px;
-        }
-        
-        .info-label { color: var(--text-sub); margin-right: 5px; }
-        .info-val { font-weight: bold; }
-        
-        .moves-badge {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        /* 隐藏复选框，完全靠点击卡片触发 */
-        .hidden-cb { display: none; }
-    </style>
+    <link rel="stylesheet" href="./style/style.css">
 </head>
 <body>
 
@@ -537,26 +312,54 @@
 
     // --- 4. 导出图片 ---
     function exportImage() {
-        const captureArea = document.getElementById('capture-area');
+        // 获取原始 DOM
+        const originalElement = document.getElementById('results-area');
         
-        // 临时调整样式以适应截图
-        const originalBg = captureArea.style.background;
-        captureArea.style.background = "#fff";
-        captureArea.style.padding = "20px";
+        // 如果没有结果，不导出
+        if (!originalElement || originalElement.children.length === 0) {
+            alert("没有结果可导出");
+            return;
+        }
 
-        html2canvas(captureArea, {
-            scale: 2, // 提高清晰度
-            useCORS: true // 允许跨域图片
+        // 创建一个提示 loading
+        const btn = event.target; // 假设是按钮触发
+        const originalText = btn.innerText;
+        btn.innerText = "生成中...";
+        btn.disabled = true;
+
+        // 配置 html2canvas
+        html2canvas(originalElement, {
+            scale: 2, // 高清
+            useCORS: true,
+            // 关键点1: 设置 windowWidth 让库以为是在宽屏电脑上渲染
+            windowWidth: 1440, 
+            // 关键点2: 使用 onclone 回调来修改截图时刻的 DOM 样式
+            onclone: (clonedDoc) => {
+                const clonedContent = clonedDoc.getElementById('results-area');
+                
+                // 添加我们在 CSS 中定义的强制样式类
+                clonedContent.classList.add('export-mode');
+
+                // 可以在这里添加一个标题头，仅在图片中显示
+                const header = clonedDoc.createElement('div');
+                header.innerHTML = `<h3 style="text-align:center; margin-bottom:15px; color:#333;">流萤队伍配速表 (固定布局)</h3>`;
+                clonedContent.insertBefore(header, clonedContent.firstChild);
+            }
         }).then(canvas => {
-            // 恢复样式
-            captureArea.style.background = originalBg;
-            captureArea.style.padding = "";
-
-            // 下载
+            // 下载逻辑
             const link = document.createElement('a');
-            link.download = 'firefly_team_table.png';
-            link.href = canvas.toDataURL();
+            link.download = `firefly_analysis_${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL('image/png');
             link.click();
+
+            // 恢复按钮
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }).catch(err => {
+            console.error("导出失败:", err);
+            btn.innerText = originalText;
+            btn.disabled = false;
+            alert("导出图片出错，请检查控制台");
         });
     }
 
